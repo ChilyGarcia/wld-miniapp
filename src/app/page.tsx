@@ -6,12 +6,15 @@ import {
   ResponseEvent,
   Tokens,
   tokenToDecimals,
+  PayCommandInput,
 } from "@worldcoin/minikit-js";
 
 const HomePage = () => {
+  const appId = "app_97fc3debb3591a461c6ab3a16930a4e6"; // Tu App ID
+
   const handlePayment = async () => {
     // Payload de pago
-    const paymentPayload = {
+    const paymentPayload: PayCommandInput = {
       reference: "test-transaction-12345", // Identificador único
       to: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", // Dirección de destino (de prueba)
       tokens: [
@@ -21,6 +24,7 @@ const HomePage = () => {
         },
       ],
       description: "Pago de prueba con Worldcoin",
+      app_id: appId, // Incluye el App ID aquí
     };
 
     // Verifica si World App está instalada
@@ -43,6 +47,7 @@ const HomePage = () => {
         }
       });
     }
+
     return () => {
       MiniKit.unsubscribe(ResponseEvent.MiniAppPayment);
     };

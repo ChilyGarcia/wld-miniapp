@@ -1,77 +1,73 @@
 "use client";
 
-import React, { useEffect } from "react";
 import {
   MiniKit,
-  ResponseEvent,
-  Tokens,
   tokenToDecimals,
+  Tokens,
   PayCommandInput,
+  ResponseEvent,
 } from "@worldcoin/minikit-js";
+import { useEffect } from "react";
 
-const HomePage = () => {
-  const appId = "app_97fc3debb3591a461c6ab3a16930a4e6"; // Tu App ID
-
-  const handlePayment = async () => {
-    // Payload de pago
-    const paymentPayload: PayCommandInput = {
-      reference: "test-transaction-12345", // Identificador único
-      to: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", // Dirección de destino (de prueba)
-      tokens: [
-        {
-          symbol: Tokens.WLD, // Moneda Worldcoin
-          token_amount: tokenToDecimals(1, Tokens.WLD).toString(), // 1 WLD
-        },
-      ],
-      description: "Pago de prueba con Worldcoin",
-      app_id: appId, // Incluye el App ID aquí
-    };
-
-    // Verifica si World App está instalada
-    if (MiniKit.isInstalled()) {
-      MiniKit.commands.pay(paymentPayload);
-    } else {
-      alert("World App no está instalada en este dispositivo.");
-    }
-  };
-
+export default function Home() {
   useEffect(() => {
-    // Maneja las respuestas del pago
-    if (MiniKit.isInstalled()) {
-      MiniKit.subscribe(ResponseEvent.MiniAppPayment, (response) => {
-        console.log("Respuesta del pago:", response);
-        if (response.status === "success") {
+    if (!MiniKit.isInstalled()) {
+      console.error("MiniKit no está instalado en este entorno.");
+      return;
+    }
+
+    MiniKit.subscribe(ResponseEvent.MiniAppPayment, async (response) => {
+      if (response.status === "success") {
+        const res = await fetch(`/api/confirm-payment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(response),
+        });
+        const result = await res.json();
+        if (result.success) {
           alert("¡Pago exitoso!");
         } else {
-          alert("El pago falló.");
+          alert("Error al confirmar el pago.");
         }
-      });
-    }
+      }
+    });
 
     return () => {
       MiniKit.unsubscribe(ResponseEvent.MiniAppPayment);
     };
   }, []);
 
+  const sendPayment = async () => {
+    const res = await fetch("/api/initiate-payment", {
+      method: "POST",
+    });
+    const { id } = await res.json();
+
+    const payload: PayCommandInput = {
+      reference: id,
+      to: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", // Dirección de prueba
+      tokens: [
+        {
+          symbol: Tokens.WLD,
+          token_amount: tokenToDecimals(1, Tokens.WLD).toString(),
+        },
+        {
+          symbol: Tokens.USDCE,
+          token_amount: tokenToDecimals(3, Tokens.USDCE).toString(),
+        },
+      ],
+      description: "Prueba de pago para MiniKit",
+    };
+
+    if (MiniKit.isInstalled()) {
+      MiniKit.commands.pay(payload);
+    }
+  };
+
   return (
-    <div style={{ textAlign: "center", marginTop: "20px" }}>
-      <h1>Integración con Worldcoin Mini Apps</h1>
-      <button
-        onClick={handlePayment}
-        style={{
-          padding: "10px 20px",
-          fontSize: "16px",
-          cursor: "pointer",
-          backgroundColor: "#4CAF50",
-          color: "#fff",
-          border: "none",
-          borderRadius: "5px",
-        }}
-      >
-        Enviar Pago
-      </button>
+    <div>
+      <h1>Prueba de Pago</h1>
+      <button onClick={sendPayment}>Enviar Pago</button>
     </div>
   );
-};
-
-export default HomePage;
+}

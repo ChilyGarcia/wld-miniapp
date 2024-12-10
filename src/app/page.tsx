@@ -16,17 +16,19 @@ LogRocket.init("pzjgr2/vakano-apps");
 
 export default function Home() {
   useEffect(() => {
-    if (MiniKit.isInstalled()) {
-      LogRocket.log("MiniKit instalado y listo para usarse.");
-    } else {
-      const environment = window.location.origin;
-      const userAgent = navigator.userAgent;
-      const errorMessage = `MiniKit no está instalado. 
-        Environment: ${environment}, 
-        User Agent: ${userAgent}`;
-      console.error(errorMessage);
-      LogRocket.error(errorMessage);
-    }
+    setTimeout(() => {
+      if (MiniKit.isInstalled()) {
+        LogRocket.log("MiniKit instalado y listo para usarse.");
+      } else {
+        const environment = window.location.origin;
+        const userAgent = navigator.userAgent;
+        const errorMessage = `MiniKit no está instalado. 
+          Environment: ${environment}, 
+          User Agent: ${userAgent}`;
+        console.error(errorMessage);
+        LogRocket.error(errorMessage);
+      }
+    }, 100); // Retrasa la validación por 100 ms
 
     // Suscribe a los eventos de respuesta de pago
     MiniKit.subscribe(ResponseEvent.MiniAppPayment, async (response) => {

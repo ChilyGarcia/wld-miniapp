@@ -11,6 +11,7 @@ import {
 } from "@worldcoin/minikit-js";
 import { useEffect } from "react";
 import { IConfiguration } from "@/interfaces/configuration.interface";
+import { IOrder } from "@/interfaces/oder.interface";
 
 const decimalPattern = /^[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]*)?$/;
 
@@ -23,20 +24,93 @@ export default function CurrencyExchange() {
     name: "",
     email: "",
     phone: "",
+    document_number: "",
   });
   const [activeInput, setActiveInput] = useState("");
   const [sendValue, setSendValue] = useState("");
   const [receiveValue, setReceiveValue] = useState("");
   const [inverted, setInverted] = useState(1);
   const [configuration, setConfiguration] = useState<IConfiguration>();
+  const [body, setBody] = useState<IOrder>();
 
   const handleContinue = () => {
     if (step === 1 && formData.paymentMethod) {
       setStep(2);
     }
 
+    const sanitizedReceiveValue = receiveValue.replace(/,/g, "");
+
+    if (inverted === 1) {
+      setBody({
+        amount: parseFloat(sendValue),
+        bank: formData.paymentMethod,
+        bank_account: "",
+        customer_document_number: "",
+        customer_email: formData.email,
+        customer_full_name: formData.name,
+        customer_phone_number: formData.phone,
+        inverted: "1",
+        referrals_reference: "",
+      });
+    } else {
+      setBody({
+        amount: parseFloat(sanitizedReceiveValue),
+        bank: formData.paymentMethod,
+        bank_account: "",
+        customer_document_number: "",
+        customer_email: formData.email,
+        customer_full_name: formData.name,
+        customer_phone_number: formData.phone,
+        inverted: "0",
+        referrals_reference: "",
+      });
+    }
+
     sendPayment();
   };
+
+  const handleSubmit = async () => {
+    console.log("Este es el evento sbmit");
+
+    setBody((prevState) => ({
+      ...prevState,
+      customer_full_name: formData.name,
+      amount: prevState?.amount || 0,
+      bank: prevState?.bank || "",
+      bank_account: prevState?.bank_account || "",
+      customer_document_number: formData.document_number,
+      customer_email: formData.email,
+      customer_phone_number: formData.phone,
+      inverted: prevState?.inverted || "0",
+      referrals_reference: prevState?.referrals_reference || "",
+    }));
+  };
+
+  const isFinalStepValid = () => {
+    if (!body) return false;
+
+    const requiredFields = [
+      "customer_full_name",
+      "amount",
+      "bank",
+      "customer_document_number",
+      "customer_email",
+      "customer_phone_number",
+      "inverted",
+    ];
+
+    const validationResults = requiredFields.map((field) => {
+      const isValid = !!body[field as keyof IOrder];
+
+      return isValid;
+    });
+
+    return validationResults.every((isValid) => isValid);
+  };
+
+  useEffect(() => {
+    console.log(body);
+  }, [body]);
 
   const handleBack = () => {
     if (step === 2) {
@@ -207,6 +281,24 @@ export default function CurrencyExchange() {
       MiniKit.unsubscribe(ResponseEvent.MiniAppPayment);
     };
   }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+
+    setBody((prevState) => ({
+      ...prevState,
+      customer_full_name: formData.name,
+      amount: prevState?.amount || 0,
+      bank: prevState?.bank || "",
+      bank_account: prevState?.bank_account || "",
+      customer_document_number: formData.document_number,
+      customer_email: formData.email,
+      customer_phone_number: formData.phone,
+      inverted: prevState?.inverted || "0",
+      referrals_reference: prevState?.referrals_reference || "",
+    }));
+  };
 
   useEffect(() => {
     console.log("receiove value", receiveValue);
@@ -388,9 +480,7 @@ export default function CurrencyExchange() {
                   id="name"
                   type="text"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, name: e.target.value }))
-                  }
+                  onChange={handleInputChange}
                   placeholder="Ingrese su nombre completo"
                   className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
@@ -407,9 +497,7 @@ export default function CurrencyExchange() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, email: e.target.value }))
-                  }
+                  onChange={handleInputChange}
                   placeholder="Ingrese su correo electrónico"
                   className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
@@ -426,9 +514,24 @@ export default function CurrencyExchange() {
                   id="phone"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                  }
+                  onChange={handleInputChange}
+                  placeholder="Ingrese su número de teléfono"
+                  className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="document_number"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Numero de cuenta
+                </label>
+                <input
+                  id="document_number"
+                  type="number"
+                  value={formData.document_number}
+                  onChange={handleInputChange}
                   placeholder="Ingrese su número de teléfono"
                   className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
@@ -443,8 +546,13 @@ export default function CurrencyExchange() {
                 Atrás
               </button>
               <button
-                className="w-full bg-[#14162c] hover:bg-[#14162c]/90 text-white font-medium py-2 px-4 rounded-lg"
-                onClick={() => console.log("Form submitted:", formData)}
+                className={`w-full py-2 px-4 rounded-lg font-medium ${
+                  isFinalStepValid()
+                    ? "bg-[#14162c] hover:bg-[#14162c]/90 text-white"
+                    : "bg-gray-300 text-gray-400 cursor-not-allowed"
+                }`}
+                onClick={handleSubmit}
+                disabled={!isFinalStepValid()}
               >
                 Finalizar
               </button>

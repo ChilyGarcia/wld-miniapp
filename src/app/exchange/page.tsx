@@ -136,14 +136,6 @@ export default function CurrencyExchange() {
     }
   };
 
-  const handleSubmit = async () => {
-    console.log("Este es el evento sbmit");
-
-    sendPayment();
-
-    console.log("Transaccion realizada");
-  };
-
   const isFinalStepValid = () => {
     if (!body) return false;
 
@@ -606,7 +598,7 @@ export default function CurrencyExchange() {
                     ? "bg-[#14162c] hover:bg-[#14162c]/90 text-white"
                     : "bg-gray-300 text-gray-400 cursor-not-allowed"
                 }`}
-                onClick={handleSubmit}
+                onClick={sendPayment}
                 disabled={!isFinalStepValid()}
               >
                 Finalizar

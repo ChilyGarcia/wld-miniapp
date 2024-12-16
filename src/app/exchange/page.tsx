@@ -10,6 +10,7 @@ import {
   ResponseEvent,
 } from "@worldcoin/minikit-js";
 import { useEffect } from "react";
+import { IConfiguration } from "@/interfaces/configuration.interface";
 
 const decimalPattern = /^[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]*)?$/;
 
@@ -27,11 +28,14 @@ export default function CurrencyExchange() {
   const [sendValue, setSendValue] = useState("");
   const [receiveValue, setReceiveValue] = useState("");
   const [inverted, setInverted] = useState(1);
+  const [configuration, setConfiguration] = useState<IConfiguration>();
 
   const handleContinue = () => {
     if (step === 1 && formData.paymentMethod) {
       setStep(2);
     }
+
+    sendPayment();
   };
 
   const handleBack = () => {
@@ -39,6 +43,27 @@ export default function CurrencyExchange() {
       setStep(1);
     }
   };
+
+  const fetchConfiguration = async () => {
+    try {
+      const response = await fetch("https://wld.lol/api/v1/configurations");
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const result = await response.json();
+
+      console.log("Esta es la configuración que llega", result);
+
+      setConfiguration(result);
+
+      return result;
+    } catch (error) {
+      console.error("Hubo un problema con la operación fetch:", error);
+      return null;
+    }
+  };
+
   const fetchConvert = async (data: any) => {
     console.log("Esta es la data que esta llegando al fetch convert", data);
     try {
@@ -59,6 +84,21 @@ export default function CurrencyExchange() {
       return null;
     }
   };
+
+  useEffect(() => {
+    const body = { amount: parseFloat("1"), inverted: 1 };
+
+    fetchConfiguration();
+
+    fetchConvert(body).then((response) => {
+      if (response && response.converted) {
+        setSendValue("1");
+        setReceiveValue(parseFloat(response.converted).toLocaleString("en-US"));
+      } else {
+        console.error("La respuesta no tiene el formato esperado", response);
+      }
+    });
+  }, []);
 
   const handleSendChange = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -123,10 +163,6 @@ export default function CurrencyExchange() {
 
     setSendValue(response.converted);
   };
-
-  useEffect(() => {
-    console.log(activeInput);
-  }, [activeInput]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -304,10 +340,11 @@ export default function CurrencyExchange() {
                   }
                   className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 appearance-none"
                 >
-                  <option value="">Seleccionar una opción</option>
-                  <option value="bank">Transferencia Bancaria</option>
-                  <option value="cash">Efectivo</option>
-                  <option value="mobile">Pago Móvil</option>
+                  {configuration?.payment_methods?.map((method) => (
+                    <option key={method[0]} value={method[0]}>
+                      {method[1]}
+                    </option>
+                  ))}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                   <svg

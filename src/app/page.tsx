@@ -28,7 +28,7 @@ export default function Home() {
         console.error(errorMessage);
         LogRocket.error(errorMessage);
       }
-    }, 100); // Retrasa la validación por 100 ms
+    }, 100);
 
     // Suscribe a los eventos de respuesta de pago
     MiniKit.subscribe(ResponseEvent.MiniAppPayment, async (response) => {
@@ -46,7 +46,7 @@ export default function Home() {
           LogRocket.log(
             "Respuesta del backend de confirmación de pago",
             result
-          ); // Log del backend
+          );
 
           if (result.success) {
             LogRocket.log("Pago confirmado con éxito");

@@ -2,6 +2,17 @@
 
 import React, { useState } from "react";
 
+import {
+  MiniKit,
+  tokenToDecimals,
+  Tokens,
+  PayCommandInput,
+  ResponseEvent,
+} from "@worldcoin/minikit-js";
+import { useEffect } from "react";
+
+const decimalPattern = /^[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]*)?$/;
+
 export default function CurrencyExchange() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -12,6 +23,10 @@ export default function CurrencyExchange() {
     email: "",
     phone: "",
   });
+  const [activeInput, setActiveInput] = useState("");
+  const [sendValue, setSendValue] = useState("");
+  const [receiveValue, setReceiveValue] = useState("");
+  const [inverted, setInverted] = useState(1);
 
   const handleContinue = () => {
     if (step === 1 && formData.paymentMethod) {
@@ -24,11 +39,182 @@ export default function CurrencyExchange() {
       setStep(1);
     }
   };
+  const fetchConvert = async (data: any) => {
+    console.log("Esta es la data que esta llegando al fetch convert", data);
+    try {
+      console.log("Haciendo la petición");
+      const response = await fetch(
+        `https://wld.lol/api/v1/convert?amount=${data.amount}&inverted=${data.inverted}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const result = await response.json();
+
+      console.log(result);
+      return result;
+    } catch (error) {
+      console.error("Hubo un problema con la operación fetch:", error);
+      return null;
+    }
+  };
+
+  const handleSendChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    let inputValue = event.target.value.replace(/,/g, "");
+
+    if (inputValue.match(decimalPattern)) {
+      setSendValue(inputValue);
+
+      let body, response;
+
+      if (inputValue.trim() === "") {
+        inputValue = "0";
+      }
+
+      body = { amount: parseFloat(inputValue), inverted: 1 };
+      setInverted(1);
+      response = await fetchConvert(body);
+
+      if (response && response.converted) {
+        const inputElement = document.getElementById(
+          "receive"
+        ) as HTMLInputElement;
+
+        if (inputElement) {
+          inputElement.value = parseFloat(response.converted).toLocaleString(
+            "en-US"
+          );
+        }
+
+        setReceiveValue(parseFloat(response.converted).toLocaleString("en-US"));
+      } else {
+        console.error("La respuesta no tiene el formato esperado", response);
+      }
+    }
+  };
+
+  const handleReceiveChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    let inputValue = event.target.value.replace(/,/g, "");
+
+    const formattedValue = parseFloat(inputValue).toLocaleString("en-US");
+    setReceiveValue(formattedValue);
+
+    let body, response;
+
+    if (inputValue.trim() === "") {
+      inputValue = "0";
+      setReceiveValue("0");
+    }
+
+    body = { amount: parseFloat(inputValue), inverted: 0 };
+    response = await fetchConvert(body);
+    setInverted(0);
+
+    const inputElement = document.getElementById("send") as HTMLInputElement;
+
+    if (inputElement && response) {
+      inputElement.value = response.converted;
+    }
+
+    setSendValue(response.converted);
+  };
+
+  useEffect(() => {
+    console.log(activeInput);
+  }, [activeInput]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      if (MiniKit.isInstalled()) {
+      } else {
+        const environment = window.location.origin;
+        const userAgent = navigator.userAgent;
+        const errorMessage = `MiniKit no está instalado. 
+          Environment: ${environment}, 
+          User Agent: ${userAgent}`;
+        console.error(errorMessage);
+      }
+    }, 100);
+
+    // Suscribe a los eventos de respuesta de pago
+    MiniKit.subscribe(ResponseEvent.MiniAppPayment, async (response) => {
+      if (response.status === "success") {
+        try {
+          const res = await fetch(`/api/confirm-payment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(response),
+          });
+          const result = await res.json();
+
+          if (result.success) {
+            alert("¡Pago exitoso!");
+          } else {
+            const errorMessage = "Error al confirmar el pago.";
+
+            alert(errorMessage);
+          }
+        } catch (error) {
+          console.error("Error al procesar la respuesta del pago:", error);
+        }
+      } else {
+        console.log("Estado de pago no exitoso", response);
+      }
+    });
+
+    return () => {
+      MiniKit.unsubscribe(ResponseEvent.MiniAppPayment);
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log("receiove value", receiveValue);
+  }, [receiveValue]);
+
+  const sendPayment = async () => {
+    try {
+      const res = await fetch("/api/initiate-payment", {
+        method: "POST",
+      });
+      const { id } = await res.json();
+
+      const payload: PayCommandInput = {
+        reference: id,
+        to: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+        tokens: [
+          {
+            symbol: Tokens.WLD,
+            token_amount: tokenToDecimals(1, Tokens.WLD).toString(),
+          },
+          {
+            symbol: Tokens.USDCE,
+            token_amount: tokenToDecimals(3, Tokens.USDCE).toString(),
+          },
+        ],
+        description: "Prueba de pago para MiniKit",
+      };
+
+      if (MiniKit.isInstalled()) {
+        MiniKit.commands.pay(payload);
+      } else {
+        const errorMessage =
+          "MiniKit no está instalado al enviar el comando de pago.";
+
+        console.error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Error al iniciar el pago:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="w-full max-w-[460px] bg-white rounded-lg shadow-md p-8">
-        {/* Progress Steps */}
         <div className="flex justify-center mb-10">
           <div className="flex items-center">
             <div
@@ -59,25 +245,8 @@ export default function CurrencyExchange() {
               <h2 className="text-xl font-medium">Intercambio wld</h2>
 
               <img src="/icon/wld-icon.png" className="w-4"></img>
-
-              {/* <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="16" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-              </svg> */}
             </div>
 
-            {/* Exchange Rates */}
             <div className="space-y-4">
               <div className="border border-gray-200 rounded-lg">
                 <div className="px-4 py-2 border-b border-gray-200">
@@ -90,15 +259,10 @@ export default function CurrencyExchange() {
                     <img src="/icon/wld-icon.png" className="w-8"></img>
                   </div>
                   <input
+                    name="sendAmount"
                     type="number"
-                    value={formData.sendAmount}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        sendAmount: parseFloat(e.target.value),
-                        receiveAmount: parseFloat(e.target.value) * 139,
-                      }))
-                    }
+                    value={sendValue}
+                    onChange={handleSendChange}
                     className="ml-auto w-24 text-right border-0 p-0 text-lg font-medium focus:outline-none"
                   />
                 </div>
@@ -115,16 +279,16 @@ export default function CurrencyExchange() {
                     <img src="/icon/colombia-icon.png" className="w-8"></img>
                   </div>
                   <input
-                    type="number"
-                    value={formData.receiveAmount}
-                    readOnly
+                    name="receiveAmount"
+                    type="text"
+                    onChange={handleReceiveChange}
+                    value={receiveValue}
                     className="ml-auto w-24 text-right border-0 p-0 text-lg font-medium focus:outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Payment Method */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-900">
                 Método de consignación
@@ -158,7 +322,11 @@ export default function CurrencyExchange() {
             </div>
 
             <button
-              className="w-full bg-[#14162c] hover:bg-[#14162c]/90 text-white py-4 px-4 rounded-lg font-medium"
+              className={`w-full py-4 px-4 rounded-lg font-medium ${
+                formData.paymentMethod
+                  ? "bg-[#14162c] hover:bg-[#14162c]/90 text-white"
+                  : "bg-gray-300 text-white cursor-not-allowed"
+              }`}
               onClick={handleContinue}
               disabled={!formData.paymentMethod}
             >

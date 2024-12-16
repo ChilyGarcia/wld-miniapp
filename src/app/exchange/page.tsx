@@ -25,13 +25,82 @@ export default function CurrencyExchange() {
     email: "",
     phone: "",
     document_number: "",
+    bank_account: "1",
   });
-  const [activeInput, setActiveInput] = useState("");
+
   const [sendValue, setSendValue] = useState("");
   const [receiveValue, setReceiveValue] = useState("");
   const [inverted, setInverted] = useState(1);
   const [configuration, setConfiguration] = useState<IConfiguration>();
   const [body, setBody] = useState<IOrder>();
+
+  const fetchStore = async (data: any) => {
+    try {
+      const response = await fetch("https://wld.lol/api/v1/store", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key":
+            "20ae3f163b89fdbb776cdfa4461685dd6e609709fc142a9fe9f41a7810c7cffa",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const result = await response.json();
+
+      console.log("Esta es la configuración que llega", result);
+
+      setConfiguration(result);
+
+      return result;
+    } catch (error) {
+      console.error("Hubo un problema con la operación fetch:", error);
+      return null;
+    }
+  };
+  const fetchConfiguration = async () => {
+    try {
+      const response = await fetch("https://wld.lol/api/v1/configurations");
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const result = await response.json();
+
+      console.log("Esta es la configuración que llega", result);
+
+      setConfiguration(result);
+
+      return result;
+    } catch (error) {
+      console.error("Hubo un problema con la operación fetch:", error);
+      return null;
+    }
+  };
+
+  const fetchConvert = async (data: any) => {
+    console.log("Esta es la data que esta llegando al fetch convert", data);
+    try {
+      console.log("Haciendo la petición");
+      const response = await fetch(
+        `https://wld.lol/api/v1/convert?amount=${data.amount}&inverted=${data.inverted}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const result = await response.json();
+
+      console.log(result);
+      return result;
+    } catch (error) {
+      console.error("Hubo un problema con la operación fetch:", error);
+      return null;
+    }
+  };
 
   const handleContinue = () => {
     if (step === 1 && formData.paymentMethod) {
@@ -72,18 +141,9 @@ export default function CurrencyExchange() {
   const handleSubmit = async () => {
     console.log("Este es el evento sbmit");
 
-    setBody((prevState) => ({
-      ...prevState,
-      customer_full_name: formData.name,
-      amount: prevState?.amount || 0,
-      bank: prevState?.bank || "",
-      bank_account: prevState?.bank_account || "",
-      customer_document_number: formData.document_number,
-      customer_email: formData.email,
-      customer_phone_number: formData.phone,
-      inverted: prevState?.inverted || "0",
-      referrals_reference: prevState?.referrals_reference || "",
-    }));
+    fetchStore(body);
+
+    console.log(body);
   };
 
   const isFinalStepValid = () => {
@@ -108,54 +168,9 @@ export default function CurrencyExchange() {
     return validationResults.every((isValid) => isValid);
   };
 
-  useEffect(() => {
-    console.log(body);
-  }, [body]);
-
   const handleBack = () => {
     if (step === 2) {
       setStep(1);
-    }
-  };
-
-  const fetchConfiguration = async () => {
-    try {
-      const response = await fetch("https://wld.lol/api/v1/configurations");
-
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-      const result = await response.json();
-
-      console.log("Esta es la configuración que llega", result);
-
-      setConfiguration(result);
-
-      return result;
-    } catch (error) {
-      console.error("Hubo un problema con la operación fetch:", error);
-      return null;
-    }
-  };
-
-  const fetchConvert = async (data: any) => {
-    console.log("Esta es la data que esta llegando al fetch convert", data);
-    try {
-      console.log("Haciendo la petición");
-      const response = await fetch(
-        `https://wld.lol/api/v1/convert?amount=${data.amount}&inverted=${data.inverted}`
-      );
-
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-      const result = await response.json();
-
-      console.log(result);
-      return result;
-    } catch (error) {
-      console.error("Hubo un problema con la operación fetch:", error);
-      return null;
     }
   };
 
@@ -291,18 +306,29 @@ export default function CurrencyExchange() {
       customer_full_name: formData.name,
       amount: prevState?.amount || 0,
       bank: prevState?.bank || "",
-      bank_account: prevState?.bank_account || "",
       customer_document_number: formData.document_number,
       customer_email: formData.email,
       customer_phone_number: formData.phone,
       inverted: prevState?.inverted || "0",
+      bank_account: formData.bank_account,
       referrals_reference: prevState?.referrals_reference || "",
     }));
   };
 
   useEffect(() => {
-    console.log("receiove value", receiveValue);
-  }, [receiveValue]);
+    setBody((prevState) => ({
+      ...prevState,
+      customer_full_name: formData.name,
+      amount: prevState?.amount || 0,
+      bank: prevState?.bank || "",
+      customer_document_number: formData.document_number,
+      customer_email: formData.email,
+      customer_phone_number: formData.phone,
+      inverted: prevState?.inverted || "0",
+      bank_account: formData.bank_account,
+      referrals_reference: prevState?.referrals_reference || "",
+    }));
+  }, [formData]);
 
   const sendPayment = async () => {
     try {
@@ -518,6 +544,39 @@ export default function CurrencyExchange() {
                   placeholder="Ingrese su número de teléfono"
                   className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-900">
+                  Tipo de cuenta
+                </label>
+                <div className="relative">
+                  <select
+                    value={formData.bank_account}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        bank_account: e.target.value,
+                      }))
+                    }
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 appearance-none"
+                  >
+                    {configuration?.bank_types?.map((method) => (
+                      <option key={method[0]} value={method[0]}>
+                        {method[1]}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg
+                      className="fill-current h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">

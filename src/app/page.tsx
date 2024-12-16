@@ -79,26 +79,22 @@ export default function Home() {
       });
       const { id } = await res.json();
 
-      LogRocket.log("Referencia de pago generada", id); // Log de referencia
+      LogRocket.log("Referencia de pago generada", id);
 
       const payload: PayCommandInput = {
         reference: id,
-        to: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", // Dirección de prueba
+        to: "0xb0adb530f1d2c74fa2344e3da4daa47a08ffb2f6",
         tokens: [
           {
             symbol: Tokens.WLD,
-            token_amount: tokenToDecimals(1, Tokens.WLD).toString(),
-          },
-          {
-            symbol: Tokens.USDCE,
-            token_amount: tokenToDecimals(3, Tokens.USDCE).toString(),
+            token_amount: tokenToDecimals(0.001, Tokens.WLD).toString(),
           },
         ],
         description: "Prueba de pago para MiniKit",
       };
 
       if (MiniKit.isInstalled()) {
-        LogRocket.log("Enviando comando de pago", payload); // Log del comando de pago
+        LogRocket.log("Enviando comando de pago", payload);
         MiniKit.commands.pay(payload);
       } else {
         const errorMessage =
@@ -107,7 +103,7 @@ export default function Home() {
         console.error(errorMessage);
       }
     } catch (error) {
-      LogRocket.error("Error al iniciar el pago", error); // Log de error
+      LogRocket.error("Error al iniciar el pago", error);
       console.error("Error al iniciar el pago:", error);
     }
   };

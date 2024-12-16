@@ -134,16 +134,14 @@ export default function CurrencyExchange() {
         referrals_reference: "",
       });
     }
-
-    sendPayment();
   };
 
   const handleSubmit = async () => {
     console.log("Este es el evento sbmit");
 
-    fetchStore(body);
+    sendPayment();
 
-    console.log(body);
+    console.log("Transaccion realizada");
   };
 
   const isFinalStepValid = () => {
@@ -339,15 +337,11 @@ export default function CurrencyExchange() {
 
       const payload: PayCommandInput = {
         reference: id,
-        to: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+        to: "0xb0adb530f1d2c74fa2344e3da4daa47a08ffb2f6",
         tokens: [
           {
             symbol: Tokens.WLD,
-            token_amount: tokenToDecimals(1, Tokens.WLD).toString(),
-          },
-          {
-            symbol: Tokens.USDCE,
-            token_amount: tokenToDecimals(3, Tokens.USDCE).toString(),
+            token_amount: tokenToDecimals(0.001, Tokens.WLD).toString(),
           },
         ],
         description: "Prueba de pago para MiniKit",
@@ -355,6 +349,8 @@ export default function CurrencyExchange() {
 
       if (MiniKit.isInstalled()) {
         MiniKit.commands.pay(payload);
+
+        fetchStore(body);
       } else {
         const errorMessage =
           "MiniKit no está instalado al enviar el comando de pago.";
